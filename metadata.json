@@ -1,0 +1,5 @@
+{
+  "name": "Gemini Defense",
+  "description": "一款策略塔防游戏，Gemini AI 将作为您的战术顾问，分析您的游戏玩法并生成动态的波次简报。",
+  "requestFramePermissions": []
+}
