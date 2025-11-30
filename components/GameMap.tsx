@@ -41,32 +41,23 @@ const GameMap: React.FC<GameMapProps> = ({
     // Clear canvas
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-    // 1. Draw Grid Background
-    ctx.fillStyle = '#111827'; // Dark gray/blue bg
+    // 1. Draw Background (Grass)
+    ctx.fillStyle = '#3f6212'; // Dark green grass
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-    // Grid lines (subtle)
-    ctx.strokeStyle = '#1f2937';
-    ctx.lineWidth = 1;
-    for (let x = 0; x <= GRID_W; x++) {
-      ctx.beginPath();
-      ctx.moveTo(x * CELL_SIZE, 0);
-      ctx.lineTo(x * CELL_SIZE, GRID_H * CELL_SIZE);
-      ctx.stroke();
-    }
-    for (let y = 0; y <= GRID_H; y++) {
-      ctx.beginPath();
-      ctx.moveTo(0, y * CELL_SIZE);
-      ctx.lineTo(GRID_W * CELL_SIZE, y * CELL_SIZE);
-      ctx.stroke();
+    
+    // Draw simple grass tufts
+    ctx.fillStyle = '#365314';
+    for(let i=0; i<30; i++) {
+       const rx = (Math.sin(i * 123) * 0.5 + 0.5) * ctx.canvas.width;
+       const ry = (Math.cos(i * 321) * 0.5 + 0.5) * ctx.canvas.height;
+       ctx.beginPath();
+       ctx.arc(rx, ry, 2, 0, Math.PI*2);
+       ctx.fill();
     }
 
-    // 2. Draw Path
-    ctx.strokeStyle = '#374151'; // Lighter path color
-    ctx.lineWidth = CELL_SIZE * 0.6;
+    // 2. Draw Path (Dirt Road)
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.beginPath();
     
     // Convert grid coordinates to pixel center coordinates
     const getPixelPos = (p: Position) => ({
@@ -74,13 +65,21 @@ const GameMap: React.FC<GameMapProps> = ({
       y: p.y * CELL_SIZE + CELL_SIZE / 2
     });
 
+    // Outer path (dirt edge)
+    ctx.strokeStyle = '#5d4037'; // Brown edge
+    ctx.lineWidth = CELL_SIZE * 0.8;
+    ctx.beginPath();
     const start = getPixelPos(PATH_WAYPOINTS[0]);
     ctx.moveTo(start.x, start.y);
-    
     for (let i = 1; i < PATH_WAYPOINTS.length; i++) {
       const p = getPixelPos(PATH_WAYPOINTS[i]);
       ctx.lineTo(p.x, p.y);
     }
+    ctx.stroke();
+
+    // Inner path (lighter dirt)
+    ctx.strokeStyle = '#795548'; // Lighter brown
+    ctx.lineWidth = CELL_SIZE * 0.6;
     ctx.stroke();
 
     // 3. Draw Towers
@@ -88,25 +87,24 @@ const GameMap: React.FC<GameMapProps> = ({
       const px = tower.x * CELL_SIZE + CELL_SIZE / 2;
       const py = tower.y * CELL_SIZE + CELL_SIZE / 2;
 
-      // Base
-      ctx.fillStyle = '#374151';
-      ctx.beginPath();
-      ctx.arc(px, py, CELL_SIZE * 0.4, 0, Math.PI * 2);
-      ctx.fill();
+      // Draw Base (Stone)
+      ctx.fillStyle = '#78716c'; // Stone grey
+      ctx.strokeStyle = '#44403c';
+      ctx.lineWidth = 2;
+      ctx.fillRect(px - 14, py - 14, 28, 28);
+      ctx.strokeRect(px - 14, py - 14, 28, 28);
 
       // Highlight if selected
       if (tower.id === selectedTowerId) {
-        ctx.strokeStyle = '#facc15'; // Yellow highlight
+        ctx.strokeStyle = '#facc15'; // Gold highlight
         ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(px, py, CELL_SIZE * 0.45, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.strokeRect(px - 16, py - 16, 32, 32);
 
-        // Draw Permament Range Circle for selected tower
+        // Draw Permanent Range Circle for selected tower
         ctx.beginPath();
         ctx.arc(px, py, tower.range * CELL_SIZE, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
-        ctx.strokeStyle = 'rgba(250, 204, 21, 0.6)';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
         ctx.fill();
         ctx.lineWidth = 1;
         ctx.setLineDash([5, 5]);
@@ -114,43 +112,78 @@ const GameMap: React.FC<GameMapProps> = ({
         ctx.setLineDash([]);
       }
 
-      // Turret
+      // Draw Turret / Structure
       ctx.fillStyle = tower.color;
-      ctx.beginPath();
-      if (tower.type === 'SNIPER') {
-        ctx.rect(px - 6, py - 6, 12, 12);
-      } else if (tower.type === 'ICE') {
-        ctx.moveTo(px, py - 10);
-        ctx.lineTo(px + 10, py + 5);
-        ctx.lineTo(px - 10, py + 5);
-      } else {
-        ctx.arc(px, py, CELL_SIZE * 0.25, 0, Math.PI * 2);
-      }
-      ctx.fill();
       
-      // Cooldown indicator (ring)
+      if (tower.type === TowerType.SNIPER) { // Ballista
+        // Crossbow shape
+        ctx.fillStyle = '#3e2723'; // Dark wood
+        ctx.save();
+        ctx.translate(px, py);
+        // Find nearest enemy to rotate? Just static for now or generic direction
+        ctx.rotate(Math.PI / 4); 
+        ctx.fillRect(-4, -12, 8, 24); // Body
+        ctx.fillRect(-12, -4, 24, 4); // Bow
+        ctx.restore();
+      } else if (tower.type === TowerType.RAPID) { // Mage Tower
+        // Crystal
+        ctx.fillStyle = '#7e22ce';
+        ctx.beginPath();
+        ctx.moveTo(px, py - 12);
+        ctx.lineTo(px + 8, py);
+        ctx.lineTo(px, py + 12);
+        ctx.lineTo(px - 8, py);
+        ctx.closePath();
+        ctx.fill();
+        // Glow
+        ctx.fillStyle = 'rgba(147, 51, 234, 0.5)';
+        ctx.beginPath();
+        ctx.arc(px, py, 6, 0, Math.PI*2);
+        ctx.fill();
+      } else if (tower.type === TowerType.ICE) { // Frost Obelisk
+        // Triangle/Obelisk
+        ctx.fillStyle = '#0ea5e9';
+        ctx.beginPath();
+        ctx.moveTo(px, py - 14);
+        ctx.lineTo(px + 8, py + 10);
+        ctx.lineTo(px - 8, py + 10);
+        ctx.closePath();
+        ctx.fill();
+      } else { // Basic Archer Tower
+        // Round wooden tower
+        ctx.fillStyle = '#a16207';
+        ctx.beginPath();
+        ctx.arc(px, py, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#3e2723';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        // Cross (roof or weapon)
+        ctx.beginPath();
+        ctx.moveTo(px - 5, py - 5);
+        ctx.lineTo(px + 5, py + 5);
+        ctx.moveTo(px + 5, py - 5);
+        ctx.lineTo(px - 5, py + 5);
+        ctx.stroke();
+      }
+      
+      // Cooldown indicator (small bar below)
       if (tower.cooldown > 0) {
-         ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-         ctx.lineWidth = 2;
-         ctx.beginPath();
          const pct = tower.cooldown / tower.cooldownMax;
-         ctx.arc(px, py, CELL_SIZE * 0.35, -Math.PI/2, (-Math.PI/2) + (Math.PI * 2 * pct));
-         ctx.stroke();
+         ctx.fillStyle = 'rgba(0,0,0,0.5)';
+         ctx.fillRect(px - 12, py + 16, 24, 4);
+         ctx.fillStyle = '#fbbf24';
+         ctx.fillRect(px - 12, py + 16, 24 * (1-pct), 4);
       }
 
-      // Upgrade indicators (little dots)
+      // Upgrade indicators (Stars)
       const totalUpgrades = tower.upgrades.damage + tower.upgrades.range + tower.upgrades.cooldown;
       if (totalUpgrades > 0) {
-        ctx.fillStyle = '#fbbf24';
+        ctx.fillStyle = '#facc15';
         for (let i = 0; i < Math.min(totalUpgrades, 3); i++) {
           ctx.beginPath();
-          ctx.arc(px - 8 + (i * 8), py + 12, 2, 0, Math.PI * 2);
+          ctx.arc(px - 8 + (i * 8), py - 18, 2, 0, Math.PI * 2);
           ctx.fill();
-        }
-        if (totalUpgrades > 3) {
-           ctx.font = '8px Arial';
-           ctx.fillStyle = '#fff';
-           ctx.fillText('+', px + 12, py + 14);
         }
       }
     });
@@ -163,23 +196,49 @@ const GameMap: React.FC<GameMapProps> = ({
 
       ctx.fillStyle = enemy.frozen > 0 ? '#67e8f9' : config.color;
       
-      // Draw shape based on type
+      // Shadow
       ctx.beginPath();
-      if (enemy.type === 'BOSS') {
-        ctx.rect(px - 12, py - 12, 24, 24);
-      } else if (enemy.type === 'GOBLIN') {
+      ctx.ellipse(px, py + 8, 8, 4, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fill();
+
+      // Body
+      ctx.fillStyle = enemy.frozen > 0 ? '#bae6fd' : config.color;
+      ctx.strokeStyle = '#1c1917';
+      ctx.lineWidth = 1;
+      
+      ctx.beginPath();
+      if (enemy.type === 'BOSS') { // Dragon/Big Boss
+        ctx.moveTo(px, py - 15);
+        ctx.lineTo(px + 12, py + 5);
+        ctx.lineTo(px, py + 12);
+        ctx.lineTo(px - 12, py + 5);
+        ctx.closePath();
+      } else if (enemy.type === 'GOBLIN') { // Small circle
         ctx.arc(px, py, 6, 0, Math.PI * 2);
-      } else {
-        ctx.arc(px, py, 10, 0, Math.PI * 2);
+      } else if (enemy.type === 'TANK') { // Square-ish Golem
+        ctx.rect(px - 9, py - 9, 18, 18);
+      } else { // Orc (Medium circle)
+        ctx.arc(px, py, 9, 0, Math.PI * 2);
       }
       ctx.fill();
+      ctx.stroke();
+
+      // Ice effect overlay
+      if (enemy.frozen > 0) {
+         ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+         ctx.fill();
+      }
       
       // HP Bar
       const hpPct = enemy.hp / enemy.maxHp;
-      ctx.fillStyle = 'red';
-      ctx.fillRect(px - 10, py - 16, 20, 4);
-      ctx.fillStyle = '#22c55e';
-      ctx.fillRect(px - 10, py - 16, 20 * hpPct, 4);
+      const hpWidth = 20;
+      const hpY = py - 18;
+      
+      ctx.fillStyle = '#44403c';
+      ctx.fillRect(px - hpWidth/2, hpY, hpWidth, 4);
+      ctx.fillStyle = hpPct > 0.5 ? '#22c55e' : hpPct > 0.2 ? '#eab308' : '#ef4444';
+      ctx.fillRect(px - hpWidth/2, hpY, hpWidth * hpPct, 4);
     });
 
     // 5. Draw Projectiles
@@ -188,63 +247,68 @@ const GameMap: React.FC<GameMapProps> = ({
       const py = proj.y * CELL_SIZE + CELL_SIZE / 2;
 
       ctx.fillStyle = proj.color;
-      ctx.beginPath();
-      ctx.arc(px, py, 3, 0, Math.PI * 2);
-      ctx.fill();
+      
+      if (proj.color === '#7e22ce' || proj.color === '#0ea5e9') {
+        // Magic Orb
+        ctx.beginPath();
+        ctx.arc(px, py, 4, 0, Math.PI * 2);
+        ctx.fill();
+        // Sparkle
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.beginPath();
+        ctx.arc(px-1, py-1, 1.5, 0, Math.PI*2);
+        ctx.fill();
+      } else {
+        // Arrow / Bolt (Line)
+        // Ideally we'd calculate rotation based on movement vector, 
+        // but for now a simple dot/line suffices
+        ctx.beginPath();
+        ctx.arc(px, py, 2.5, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
     });
 
-    // 6. Draw Hover, Range, and Validation
+    // 6. Draw Cursor / Placement
     const mousePos = mousePosRef.current;
     if (mousePos) {
       const px = mousePos.x * CELL_SIZE + CELL_SIZE / 2;
       const py = mousePos.y * CELL_SIZE + CELL_SIZE / 2;
 
-      // Determine logic for range and validity
       let rangeRadius = 0;
       let isInvalidPlacement = false;
-
-      // Only show hover range if we are NOT building and not hovering the currently selected upgraded tower
-      // (because selected upgraded tower already draws its range permanently)
       
       if (selectedTowerType) {
-        // Building Mode
         rangeRadius = TOWER_STATS[selectedTowerType].range * CELL_SIZE;
         const isOccupied = towers.some(t => t.x === mousePos.x && t.y === mousePos.y);
         const onPath = isTileOnPath(mousePos.x, mousePos.y);
         isInvalidPlacement = isOccupied || onPath;
       } else {
-        // Inspect Mode: Hovering over OTHER towers
         const hoveredTower = towers.find(t => t.x === mousePos.x && t.y === mousePos.y);
         if (hoveredTower && hoveredTower.id !== selectedTowerId) {
           rangeRadius = hoveredTower.range * CELL_SIZE;
         }
       }
 
-      // Draw Highlight Box
-      ctx.fillStyle = isInvalidPlacement ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.1)';
-      ctx.fillRect(mousePos.x * CELL_SIZE, mousePos.y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
-      ctx.strokeStyle = isInvalidPlacement ? 'rgba(239, 68, 68, 0.8)' : 'rgba(255, 255, 255, 0.5)';
-      ctx.lineWidth = 1;
+      // Selection Box
+      ctx.strokeStyle = isInvalidPlacement ? '#ef4444' : '#ffffff';
+      ctx.lineWidth = 2;
       ctx.strokeRect(mousePos.x * CELL_SIZE, mousePos.y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
 
-      // Draw Range Circle (Building or Hovering unselected)
       if (rangeRadius > 0) {
         ctx.beginPath();
         ctx.arc(px, py, rangeRadius, 0, Math.PI * 2);
-        
         if (isInvalidPlacement) {
-           ctx.fillStyle = 'rgba(239, 68, 68, 0.1)'; 
-           ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+           ctx.fillStyle = 'rgba(239, 68, 68, 0.2)'; 
+           ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
         } else {
-           ctx.fillStyle = 'rgba(59, 130, 246, 0.15)';
-           ctx.strokeStyle = 'rgba(59, 130, 246, 0.4)';
+           ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+           ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
         }
-        
         ctx.fill();
-        ctx.lineWidth = 1;
-        ctx.setLineDash([5, 5]);
         ctx.stroke();
-        ctx.setLineDash([]);
       }
     }
   };
@@ -256,41 +320,29 @@ const GameMap: React.FC<GameMapProps> = ({
     if (!ctx) return;
 
     let animationFrameId: number;
-
     const renderLoop = () => {
       draw(ctx);
       animationFrameId = requestAnimationFrame(renderLoop);
     };
     renderLoop();
-
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-    };
+    return () => cancelAnimationFrame(animationFrameId);
   }, [enemies, towers, projectiles, selectedTowerType, selectedTowerId]); 
 
   const getGridPos = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
-    
     const rect = canvas.getBoundingClientRect();
-    // Calculate scale factors (CSS size vs Attribute size)
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-
     const x = Math.floor((clientX - rect.left) * scaleX / CELL_SIZE);
     const y = Math.floor((clientY - rect.top) * scaleY / CELL_SIZE);
-
-    if (x >= 0 && x < GRID_W && y >= 0 && y < GRID_H) {
-      return { x, y };
-    }
+    if (x >= 0 && x < GRID_W && y >= 0 && y < GRID_H) return { x, y };
     return null;
   };
 
   const handleClick = (e: React.MouseEvent) => {
     const pos = getGridPos(e.clientX, e.clientY);
-    if (pos) {
-      onTileClick(pos);
-    }
+    if (pos) onTileClick(pos);
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -302,10 +354,7 @@ const GameMap: React.FC<GameMapProps> = ({
     mousePosRef.current = null;
   };
   
-  // Touch support for mobile
   const handleTouchStart = (e: React.TouchEvent) => {
-    // Prevent default to avoid scrolling on some devices if needed, but might block scroll
-    // e.preventDefault(); 
     const touch = e.touches[0];
     const pos = getGridPos(touch.clientX, touch.clientY);
     if (pos) {
@@ -315,7 +364,7 @@ const GameMap: React.FC<GameMapProps> = ({
   };
 
   return (
-    <div className="relative w-full max-w-[800px] shadow-2xl rounded-lg border border-slate-700 bg-slate-900 overflow-hidden monitor-bezel">
+    <div className="relative w-full max-w-[800px] rounded-lg bg-[#3e2723] overflow-hidden map-border group">
       <canvas
         ref={canvasRef}
         width={GRID_W * CELL_SIZE}
@@ -324,12 +373,9 @@ const GameMap: React.FC<GameMapProps> = ({
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         onTouchStart={handleTouchStart}
-        className="w-full h-auto cursor-crosshair block touch-manipulation"
-        style={{ imageRendering: 'pixelated' }} 
+        className="w-full h-auto cursor-crosshair block touch-none relative z-10"
+        style={{ imageRendering: 'auto' }} 
       />
-      {/* Scanline overlay effect */}
-      <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent to-black opacity-10" 
-           style={{ backgroundSize: '100% 4px' }}></div>
     </div>
   );
 };
